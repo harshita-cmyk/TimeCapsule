@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>TimeCapsule</title>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.min.js"></script>
+   <style>
+       * {
+           margin: 0;
+           padding: 0;
+           box-sizing: border-box;
+           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       }
+       body {
+           background-color: #0a1128;
+           color: #fff;
+           overflow: hidden;
+       }
+       #canvas-container {
+           position: fixed;
+           top: 0;
+           left: 0;
+           width: 100%;
+           height: 100%;
+           z-index: 1;
+       }
+       #ui-container {
+           position: relative;
+           z-index: 2;
+           padding: 20px;
+           display: flex;
+           flex-direction: column;
+           height: 100vh;
+       }
+       header {
+           display: flex;
+           justify-content: space-between;
+           align-items: center;
+           margin-bottom: 20px;
+       }
+       h1 {
+           font-size: 2rem;
+           color: #fff;
+           text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+       }
+       .btn {
+           background-color: #3a86ff;
+           color: white;
+           border: none;
+           border-radius: 4px;
+           padding: 8px 16px;
+           cursor: pointer;
+           transition: all 0.3s ease;
+           margin-left: 8px;
+       }
+       .btn:hover {
+           background-color: #4a95ff;
+           transform: translateY(-2px);
+           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+       }
+       .modal {
+           display: none;
+           position: fixed;
+           top: 50%;
+           left: 50%;
+           transform: translate(-50%, -50%);
+           background-color: rgba(26, 27, 38, 0.95);
+           border-radius: 8px;
+           padding: 24px;
+           width: 90%;
+           max-width: 500px;
+           box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+           z-index: 10;
+           max-height: 90vh;
+           overflow-y: auto;
+       }
+       .modal h2 {
+           margin-bottom: 16px;
+           color: #fff;
+       }
+       .form-group {
+           margin-bottom: 16px;
+       }
+       label {
+           display: block;
+           margin-bottom: 4px;
+           color: #ccc;
+       }
+       input, textarea, select {
+           width: 100%;
+           padding: 8px;
+           border-radius: 4px;
+           border: 1px solid #444;
+           background-color: #222;
+           color: #fff;
+       }
+       .button-group {
+           display: flex;
+           justify-content: flex-end;
+           gap: 8px;
+           margin-top: 16px;
+       }
+       .overlay {
+           display: none;
+           position: fixed;
+           top: 0;
+           left: 0;
+           width: 100%;
+           height: 100%;
+           background-color: rgba(0, 0, 0, 0.7);
+           z-index: 5;
+       }
+       .memory-display {
+           display: none;
+           position: fixed;
+           top: 50%;
+           left: 50%;
+           transform: translate(-50%, -50%);
+           background-color: rgba(26, 27, 38, 0.95);
+           border-radius: 8px;
+           padding: 24px;
+           width: 90%;
+           max-width: 600px;
+           max-height: 80vh;
+           overflow-y: auto;
+           box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+           z-index: 10;
+       }
+       .memory-header {
+           display: flex;
+           justify-content: space-between;
+           align-items: center;
+           margin-bottom: 16px;
+       }
+       .memory-content {
+           margin-bottom: 20px;
+       }
+       .memory-content p {
+           margin-bottom: 16px;
+           line-height: 1.6;
+       }
+       .memory-date {
+           color: #aaa;
+           font-style: italic;
+           margin-bottom: 16px;
+       }
+       .memory-image {
+           width: 100%;
+           max-height: 300px;
+           object-fit: contain;
+           margin-bottom: 16px;
+       }
+       .people-list {
+           display: flex;
+           flex-wrap: wrap;
+           gap: 10px;
+           margin-top: 10px;
+       }
+       .person-item {
+           background-color: rgba(58, 134, 255, 0.2);
+           border: 1px solid #3a86ff;
+           border-radius: 4px;
+           padding: 8px 12px;
+           cursor: pointer;
+           transition: all 0.3s ease;
+       }
+       .person-item:hover {
+           background-color: rgba(58, 134, 255, 0.4);
+       }
+       .person-item.active {
+           background-color: #3a86ff;
+       }
+       .close-btn {
+           background: none;
+           border: none;
+           color: #fff;
+           font-size: 24px;
+           cursor: pointer;
+       }
+       .info-panel {
+           position: fixed;
+           bottom: 20px;
+           left: 20px;
+           background-color: rgba(26, 27, 38, 0.8);
+           padding: 10px 16px;
+           border-radius: 4px;
+           max-width: 300px;
+       }
+       .info-panel p {
+           margin-bottom: 8px;
+           font-size: 14px;
+           color: #ccc;
+       }
+       .controls {
+           position: fixed;
+           bottom: 20px;
+           right: 20px;
+           display: flex;
+           gap: 10px;
+       }
+       .fade-in {
+           animation: fadeIn 0.5s ease-in-out forwards;
+       }
+       .image-preview {
+           width: 100%;
+           max-height: 200px;
+           margin-top: 8px;
+           display: none;
+           object-fit: contain;
+           border-radius: 4px;
+           border: 1px solid #444;
+       }
+       .relation-badge {
+           display: inline-block;
+           background-color: rgba(58, 134, 255, 0.3);
+           border-radius: 4px;
+           padding: 4px 8px;
+           margin-left: 8px;
+           font-size: 0.8em;
+       }
+       .contact-info {
+           color: #aaa;
+           font-size: 0.9em;
+           margin-top: 4px;
+       }
+       .search-container {
+           margin: 10px 0;
+           width: 100%;
+           max-width: 400px;
+       }
+       @keyframes fadeIn {
+           from { opacity: 0; }
+           to { opacity: 1; }
+       }
+   </style>
+</head>
+<body>
+   <div id="canvas-container"></div>
+   <div id="ui-container">
+       <header>
+           <h1>TimeCapsule</h1>
+           <div>
+               <button id="add-person-btn" class="btn">Add Person</button>
+               <button id="add-memory-btn" class="btn">Add Memory</button>
+           </div>
+       </header>
+       <div class="search-container">
+           <input type="text" id="search-input" placeholder="Search memories..." style="padding: 8px; width: 100%;">
+       </div>
+       <div class="people-list" id="people-list">
+           <!-- People will be added here dynamically -->
+       </div>
+   </div>
+   <div class="info-panel">
+       <p>Navigate: Left-click and drag to rotate</p>
+       <p>Zoom: Mouse wheel to zoom in/out</p>
+       <p>Interact: Click on a capsule to view its contents</p>
+   </div>
+   <div class="controls">
+       <button id="recover-btn" class="btn">Recover Faded Memories</button>
+       <button id="export-btn" class="btn">Export</button>
+       <button id="import-btn" class="btn">Import</button>
+   </div>
+   <div class="overlay" id="overlay"></div>
+   
+   <!-- Add Person Modal -->
+   <div class="modal" id="add-person-modal">
+       <h2>Add New Person</h2>
+       <div class="form-group">
+           <label for="person-name">Name</label>
+           <input type="text" id="person-name" placeholder="Enter person's name">
+       </div>
+       <div class="form-group">
+           <label for="person-contact">Contact Information</label>
+           <input type="text" id="person-contact" placeholder="Phone, email, etc.">
+       </div>
+       <div class="form-group">
+           <label for="person-relation">Relationship</label>
+           <select id="person-relation">
+               <option value="Friend">Friend</option>
+               <option value="Family">Family</option>
+               <option value="Sibling">Sibling</option>
+               <option value="Parent">Parent</option>
+               <option value="Child">Child</option>
+               <option value="Partner">Partner</option>
+               <option value="Colleague">Colleague</option>
+               <option value="Mentor">Mentor</option>
+               <option value="Acquaintance">Acquaintance</option>
+               <option value="Other">Other</option>
+           </select>
+       </div>
+       <div class="form-group" id="other-relation-group" style="display: none;">
+           <label for="person-other-relation">Specify Relationship</label>
+           <input type="text" id="person-other-relation" placeholder="Enter relationship">
+       </div>
+       <div class="button-group">
+           <button class="btn" id="cancel-add-person">Cancel</button>
+           <button class="btn" id="save-person">Save</button>
+       </div>
+   </div>
+   
+   <!-- Add Memory Modal -->
+   <div class="modal" id="add-memory-modal">
+       <h2>Add New Memory</h2>
+       <div class="form-group">
+           <label for="memory-title">Title</label>
+           <input type="text" id="memory-title" placeholder="Give your memory a title">
+       </div>
+       <div class="form-group">
+           <label for="memory-text">Description</label>
+           <textarea id="memory-text" rows="4" placeholder="Describe your memory..."></textarea>
+       </div>
+       <div class="form-group">
+           <label for="memory-date">Date of Memory</label>
+           <input type="date" id="memory-date">
+       </div>
+       <div class="form-group">
+           <label for="memory-time">Time (optional)</label>
+           <input type="time" id="memory-time">
+       </div>
+       <div class="form-group">
+           <label for="memory-person">Associate with Person</label>
+           <select id="memory-person">
+               <option value="">Select a person (optional)</option>
+               <!-- People will be added here dynamically -->
+           </select>
+       </div>
+       <!-- Anonymous Memory Option -->
+       <div class="form-group">
+           <label>
+               <input type="checkbox" id="memory-anonymous"> Post Memory Anonymously
+           </label>
+       </div>
+       <div class="form-group">
+           <label for="memory-emotion">Emotion</label>
+           <select id="memory-emotion">
+               <option value="joy">Joy</option>
+               <option value="sadness">Sadness</option>
+               <option value="surprise">Surprise</option>
+               <option value="anger">Anger</option>
+               <option value="fear">Fear</option>
+               <option value="love">Love</option>
+               <option value="gratitude">Gratitude</option>
+           </select>
+       </div>
+       <div class="form-group">
+           <label for="memory-image">Image (optional)</label>
+           <input type="file" id="memory-image" accept="image/*">
+           <img id="image-preview" class="image-preview" alt="Preview">
+       </div>
+       <div class="button-group">
+           <button class="btn" id="cancel-add-memory">Cancel</button>
+           <button class="btn" id="save-memory">Save</button>
+       </div>
+   </div>
+   
+   <!-- Memory Display Modal -->
+   <div class="memory-display" id="memory-display">
+       <div class="memory-header">
+           <h2 id="display-title">Memory Title</h2>
+           <button class="close-btn" id="close-memory">&times;</button>
+       </div>
+       <div class="memory-date" id="display-date">Date: January 1, 2023</div>
+       <img id="display-image" class="memory-image" alt="Memory image">
+       <div class="memory-content">
+           <p id="display-text">Memory content will appear here.</p>
+       </div>
+       <div>
+           <p><strong>Associated with:</strong> <span id="display-person">Person name</span></p>
+           <p><strong>Emotion:</strong> <span id="display-emotion">Emotion</span></p>
+       </div>
+       <div class="button-group">
+           <button class="btn" id="share-memory">Share</button>
+           <button class="btn" style="background-color: #ff4757;" id="delete-memory">Delete</button>
+       </div>
+   </div>
+   
+   <input type="file" id="import-file" accept=".json" style="display: none;">
+   
+   <script>
+       // Global data structures and variables
+       let people = [];
+       let memories = [];
+       let capsules = [];
+       let scene, camera, renderer;
+       let selectedPerson = null;
+       let raycaster, mouse;
+       let currentDisplayedMemory = null; // To store the currently shown memory for sharing
+       let isEditing = false;
+
+       document.addEventListener('DOMContentLoaded', function() {
+           init();
+           setupEventListeners();
+       });
+
+       function init() {
+           initThreeJS();
+           loadFromLocalStorage();
+           updatePeopleList();
+           updateMemoryPersonDropdown();
+           animate();
+       }
+
+       function initThreeJS() {
+           scene = new THREE.Scene();
+           scene.background = new THREE.Color(0x0a1128);
+           camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+           camera.position.z = 15;
+           renderer = new THREE.WebGLRenderer({ antialias: true });
+           renderer.setSize(window.innerWidth, window.innerHeight);
+           document.getElementById('canvas-container').appendChild(renderer.domElement);
+           const ambientLight = new THREE.AmbientLight(0x404040, 1);
+           scene.add(ambientLight);
+           const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+           directionalLight.position.set(1, 1, 1);
+           scene.add(directionalLight);
+           raycaster = new THREE.Raycaster();
+           mouse = new THREE.Vector2();
+           window.addEventListener('resize', () => {
+               camera.aspect = window.innerWidth / window.innerHeight;
+               camera.updateProjectionMatrix();
+               renderer.setSize(window.innerWidth, window.innerHeight);
+           });
+           renderer.domElement.addEventListener('click', onMouseClick, false);
+           setupOrbitControls();
+       }
+
+       function setupOrbitControls() {
+           let isDragging = false;
+           let previousMousePosition = { x: 0, y: 0 };
+           renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; });
+           renderer.domElement.addEventListener('mousemove', (e) => {
+               const deltaMove = {
+                   x: e.offsetX - previousMousePosition.x,
+                   y: e.offsetY - previousMousePosition.y
+               };
+               if (isDragging) {
+                   const rotationSpeed = 0.005;
+                   scene.rotation.y += deltaMove.x * rotationSpeed;
+                   scene.rotation.x += deltaMove.y * rotationSpeed;
+               }
+               previousMousePosition = { x: e.offsetX, y: e.offsetY };
+           });
+           renderer.domElement.addEventListener('mouseup', (e) => { isDragging = false; });
+           renderer.domElement.addEventListener('wheel', (e) => {
+               e.preventDefault();
+               const zoomSpeed = 0.1;
+               if (e.deltaY > 0) {
+                   camera.position.z += zoomSpeed;
+               } else {
+                   camera.position.z -= zoomSpeed;
+               }
+               camera.position.z = Math.max(5, Math.min(camera.position.z, 30));
+           });
+       }
+
+       function setupEventListeners() {
+           document.getElementById('add-person-btn').addEventListener('click', () => {
+               document.getElementById('add-person-modal').style.display = 'block';
+               document.getElementById('overlay').style.display = 'block';
+           });
+           document.getElementById('cancel-add-person').addEventListener('click', () => {
+               document.getElementById('add-person-modal').style.display = 'none';
+               document.getElementById('overlay').style.display = 'none';
+           });
+           document.getElementById('save-person').addEventListener('click', savePerson);
+           document.getElementById('add-memory-btn').addEventListener('click', () => {
+               document.getElementById('add-memory-modal').style.display = 'block';
+               document.getElementById('overlay').style.display = 'block';
+               const today = new Date().toISOString().split('T')[0];
+               document.getElementById('memory-date').value = today;
+           });
+           document.getElementById('cancel-add-memory').addEventListener('click', () => {
+               document.getElementById('add-memory-modal').style.display = 'none';
+               document.getElementById('overlay').style.display = 'none';
+           });
+           document.getElementById('save-memory').addEventListener('click', saveMemory);
+           document.getElementById('close-memory').addEventListener('click', () => {
+               document.getElementById('memory-display').style.display = 'none';
+               document.getElementById('overlay').style.display = 'none';
+           });
+           document.getElementById('overlay').addEventListener('click', () => {
+               document.getElementById('add-person-modal').style.display = 'none';
+               document.getElementById('add-memory-modal').style.display = 'none';
+               document.getElementById('memory-display').style.display = 'none';
+               document.getElementById('overlay').style.display = 'none';
+           });
+           document.getElementById('person-relation').addEventListener('change', function() {
+               if (this.value === 'Other') {
+                   document.getElementById('other-relation-group').style.display = 'block';
+               } else {
+                   document.getElementById('other-relation-group').style.display = 'none';
+               }
+           });
+           document.getElementById('memory-image').addEventListener('change', function(e) {
+               const file = e.target.files[0];
+               if (file) {
+                   const reader = new FileReader();
+                   reader.onload = function(event) {
+                       const preview = document.getElementById('image-preview');
+                       preview.src = event.target.result;
+                       preview.style.display = 'block';
+                   };
+                   reader.readAsDataURL(file);
+               }
+           });
+           document.getElementById('delete-memory').addEventListener('click', function() {
+               const title = document.getElementById('display-title').textContent;
+               if (confirm(`Are you sure you want to delete "${title}"?`)) {
+                   const memory = memories.find(m => m.title === title);
+                   if (memory) {
+                       deleteMemory(memory.id);
+                       document.getElementById('memory-display').style.display = 'none';
+                       document.getElementById('overlay').style.display = 'none';
+                   }
+               }
+           });
+           document.getElementById('share-memory').addEventListener('click', shareMemory);
+           document.getElementById('search-input').addEventListener('input', function(e) {
+               const searchTerm = e.target.value.toLowerCase();
+               if (!searchTerm) {
+                   showAllMemories();
+                   return;
+               }
+               capsules.forEach(capsule => {
+                   const memory = capsule.memory;
+                   const titleMatch = memory.title.toLowerCase().includes(searchTerm);
+                   const textMatch = memory.text.toLowerCase().includes(searchTerm);
+                   if (titleMatch || textMatch) {
+                       capsule.mesh.visible = true;
+                       capsule.mesh.material.emissiveIntensity = 0.5;
+                   } else {
+                       capsule.mesh.visible = false;
+                   }
+               });
+           });
+           document.getElementById('recover-btn').addEventListener('click', recoverFadedMemories);
+           document.getElementById('export-btn').addEventListener('click', exportMemories);
+           document.getElementById('import-btn').addEventListener('click', function() {
+               document.getElementById('import-file').click();
+           });
+           document.getElementById('import-file').addEventListener('change', function(e) {
+               const file = e.target.files[0];
+               if (file) {
+                   const reader = new FileReader();
+                   reader.onload = function(event) {
+                       importMemories(event.target.result);
+                   };
+                   reader.readAsText(file);
+               }
+           });
+       }
+
+       function savePerson() {
+           const name = document.getElementById('person-name').value.trim();
+           const contact = document.getElementById('person-contact').value.trim();
+           let relation = document.getElementById('person-relation').value;
+           if (relation === 'Other') {
+               relation = document.getElementById('person-other-relation').value.trim();
+           }
+           if (!name) {
+               alert('Please enter a name');
+               return;
+           }
+           const newPerson = {
+               id: Date.now().toString(),
+               name,
+               contact,
+               relation,
+               dateAdded: new Date()
+           };
+           people.push(newPerson);
+           saveToLocalStorage();
+           updatePeopleList();
+           updateMemoryPersonDropdown();
+           document.getElementById('person-name').value = '';
+           document.getElementById('person-contact').value = '';
+           document.getElementById('person-relation').value = 'Friend';
+           document.getElementById('person-other-relation').value = '';
+           document.getElementById('other-relation-group').style.display = 'none';
+           document.getElementById('add-person-modal').style.display = 'none';
+           document.getElementById('overlay').style.display = 'none';
+       }
+
+       function saveMemory() {
+           const title = document.getElementById('memory-title').value.trim();
+           const text = document.getElementById('memory-text').value.trim();
+           const dateStr = document.getElementById('memory-date').value;
+           const timeStr = document.getElementById('memory-time').value;
+           // Determine association based on anonymous checkbox
+           const personDropdownValue = document.getElementById('memory-person').value;
+           const isAnonymous = document.getElementById('memory-anonymous').checked;
+           const personId = isAnonymous ? null : personDropdownValue;
+           const emotion = document.getElementById('memory-emotion').value;
+           const imageInput = document.getElementById('memory-image');
+           if (!title || !text || !dateStr) {
+               alert('Please fill in all required fields (title, description, date)');
+               return;
+           }
+           let memoryDate;
+           if (timeStr) {
+               memoryDate = new Date(`${dateStr}T${timeStr}`);
+           } else {
+               memoryDate = new Date(dateStr);
+           }
+           let imageData = null;
+           if (imageInput.files.length > 0) {
+               const preview = document.getElementById('image-preview');
+               imageData = preview.src;
+           }
+           const dateAdded = new Date();
+           const newMemory = {
+               id: Date.now().toString(),
+               title,
+               text,
+               memoryDate: memoryDate,
+               personId: personId || null,
+               emotion,
+               imageData,
+               dateAdded
+           };
+           memories.push(newMemory);
+           saveToLocalStorage();
+           createMemoryCapsule(newMemory);
+           document.getElementById('memory-title').value = '';
+           document.getElementById('memory-text').value = '';
+           document.getElementById('memory-date').value = '';
+           document.getElementById('memory-time').value = '';
+           document.getElementById('memory-person').value = '';
+           document.getElementById('memory-emotion').value = 'joy';
+           document.getElementById('memory-image').value = '';
+           document.getElementById('image-preview').style.display = 'none';
+           document.getElementById('memory-anonymous').checked = false;
+           document.getElementById('add-memory-modal').style.display = 'none';
+           document.getElementById('overlay').style.display = 'none';
+           if (selectedPerson) {
+               filterMemoriesByPerson(selectedPerson);
+           }
+       }
+
+       function updatePeopleList() {
+           const peopleList = document.getElementById('people-list');
+           peopleList.innerHTML = '';
+           const allItem = document.createElement('div');
+           allItem.classList.add('person-item');
+           if (!selectedPerson) { allItem.classList.add('active'); }
+           allItem.textContent = 'All Memories';
+           allItem.addEventListener('click', () => {
+               selectedPerson = null;
+               updateActivePersonItem(null);
+               showAllMemories();
+           });
+           peopleList.appendChild(allItem);
+           people.forEach(person => {
+               const personItem = document.createElement('div');
+               personItem.classList.add('person-item');
+               personItem.dataset.id = person.id;
+               if (selectedPerson === person.id) { personItem.classList.add('active'); }
+               const nameSpan = document.createElement('span');
+               nameSpan.textContent = person.name;
+               personItem.appendChild(nameSpan);
+               if (person.relation) {
+                   const relationBadge = document.createElement('span');
+                   relationBadge.classList.add('relation-badge');
+                   relationBadge.textContent = person.relation;
+                   personItem.appendChild(relationBadge);
+               }
+               if (person.contact) {
+                   const contactInfo = document.createElement('div');
+                   contactInfo.classList.add('contact-info');
+                   contactInfo.textContent = person.contact;
+                   personItem.appendChild(contactInfo);
+               }
+               personItem.addEventListener('click', () => {
+                   selectedPerson = person.id;
+                   updateActivePersonItem(person.id);
+                   filterMemoriesByPerson(person.id);
+               });
+               peopleList.appendChild(personItem);
+           });
+       }
+
+       function updateActivePersonItem(personId) {
+           const items = document.querySelectorAll('.person-item');
+           items.forEach(item => {
+               if ((item.dataset.id === personId) || (!personId && !item.dataset.id)) {
+                   item.classList.add('active');
+               } else {
+                   item.classList.remove('active');
+               }
+           });
+       }
+
+       function updateMemoryPersonDropdown() {
+           const dropdown = document.getElementById('memory-person');
+           while (dropdown.options.length > 1) {
+               dropdown.remove(1);
+           }
+           people.forEach(person => {
+               const option = document.createElement('option');
+               option.value = person.id;
+               option.textContent = person.name;
+               dropdown.appendChild(option);
+           });
+       }
+
+       function createMemoryCapsule(memory) {
+           const position = getPositionByEmotion(memory.emotion);
+           let geometry;
+           switch (memory.emotion) {
+               case 'joy': geometry = new THREE.SphereGeometry(0.8, 32, 32); break;
+               case 'sadness': geometry = new THREE.BoxGeometry(1.2, 1.2, 1.2); break;
+               case 'surprise': geometry = new THREE.TetrahedronGeometry(1); break;
+               case 'anger': geometry = new THREE.OctahedronGeometry(0.8); break;
+               case 'fear': geometry = new THREE.DodecahedronGeometry(0.8); break;
+               case 'love': geometry = new THREE.TorusKnotGeometry(0.6, 0.25, 64, 8, 2, 3); break;
+               case 'gratitude': geometry = new THREE.TorusGeometry(0.6, 0.2, 16, 32); break;
+               default: geometry = new THREE.SphereGeometry(0.8, 32, 32);
+           }
+           const color = getColorByEmotion(memory.emotion);
+           const material = new THREE.MeshPhongMaterial({
+               color: color,
+               emissive: color,
+               emissiveIntensity: 0.2,
+               specular: 0xffffff,
+               shininess: 50,
+               transparent: true,
+               opacity: 0.8
+           });
+           const mesh = new THREE.Mesh(geometry, material);
+           mesh.position.set(position.x, position.y, position.z);
+           mesh.rotation.x = Math.random() * Math.PI;
+           mesh.rotation.y = Math.random() * Math.PI;
+           mesh.rotation.z = Math.random() * Math.PI;
+           mesh.position.x += (Math.random() - 0.5) * 2;
+           mesh.position.y += (Math.random() - 0.5) * 2;
+           mesh.position.z += (Math.random() - 0.5) * 2;
+           scene.add(mesh);
+           capsules.push({
+               mesh: mesh,
+               memory: memory,
+               originalPosition: { ...position },
+               originalColor: color
+           });
+           animateCapsuleCreation(mesh);
+       }
+
+       function getPositionByEmotion(emotion) {
+           switch (emotion) {
+               case 'joy': return { x: 5 + Math.random() * 3, y: 5 + Math.random() * 3, z: 0 };
+               case 'sadness': return { x: -5 - Math.random() * 3, y: -5 - Math.random() * 3, z: 0 };
+               case 'surprise': return { x: 5 + Math.random() * 3, y: -5 - Math.random() * 3, z: 0 };
+               case 'anger': return { x: -5 - Math.random() * 3, y: 5 + Math.random() * 3, z: 0 };
+               case 'fear': return { x: 0, y: -7 - Math.random() * 3, z: 0 };
+               case 'love': return { x: 0, y: 7 + Math.random() * 3, z: 0 };
+               case 'gratitude': return { x: 7 + Math.random() * 3, y: 0, z: 0 };
+               default: return { x: 0, y: 0, z: 0 };
+           }
+       }
+
+       function getColorByEmotion(emotion) {
+           switch (emotion) {
+               case 'joy': return 0xFFD700;
+               case 'sadness': return 0x4682B4;
+               case 'surprise': return 0xFF69B4;
+               case 'anger': return 0xFF4500;
+               case 'fear': return 0x9400D3;
+               case 'love': return 0xFF1493;
+               case 'gratitude': return 0x32CD32;
+               default: return 0xFFFFFF;
+           }
+       }
+
+       function animateCapsuleCreation(mesh) {
+           mesh.scale.set(0.1, 0.1, 0.1);
+           new TWEEN.Tween(mesh.scale)
+               .to({ x: 1, y: 1, z: 1 }, 1000)
+               .easing(TWEEN.Easing.Elastic.Out)
+               .start();
+       }
+
+       function onMouseClick(event) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children);
+    if (intersects.length > 0) {
+        const selectedObject = intersects[0].object;
+        const selectedCapsule = capsules.find(capsule => capsule.mesh === selectedObject);
+        if (selectedCapsule) {
+            showMemoryOptions(selectedCapsule.memory);
+        }
+    }
+}
+
+       function displayMemory(memory) {
+           currentDisplayedMemory = memory;
+           document.getElementById('display-title').textContent = memory.title;
+           document.getElementById('display-text').textContent = memory.text;
+           const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+           const formattedDate = new Date(memory.memoryDate).toLocaleDateString(undefined, dateOptions);
+           document.getElementById('display-date').textContent = `Date: ${formattedDate}`;
+           const imageElement = document.getElementById('display-image');
+           if (memory.imageData) {
+               imageElement.src = memory.imageData;
+               imageElement.style.display = 'block';
+           } else {
+               imageElement.style.display = 'none';
+           }
+           const personElement = document.getElementById('display-person');
+           if (memory.personId) {
+               const person = people.find(p => p.id === memory.personId);
+               personElement.textContent = person ? person.name : 'Unknown';
+           } else {
+               personElement.textContent = 'None';
+           }
+           document.getElementById('display-emotion').textContent = memory.emotion.charAt(0).toUpperCase() + memory.emotion.slice(1);
+           document.getElementById('memory-display').style.display = 'block';
+           document.getElementById('overlay').style.display = 'block';
+       }
+
+       function filterMemoriesByPerson(personId) {
+           capsules.forEach(capsule => {
+               if (personId && capsule.memory.personId !== personId) {
+                   capsule.mesh.visible = false;
+               } else {
+                   capsule.mesh.visible = true;
+                   capsule.mesh.material.emissiveIntensity = 0.2;
+               }
+           });
+       }
+
+       function showAllMemories() {
+           capsules.forEach(capsule => {
+               capsule.mesh.visible = true;
+               capsule.mesh.material.emissiveIntensity = 0.2;
+           });
+       }
+
+       function deleteMemory(memoryId) {
+           const memoryIndex = memories.findIndex(m => m.id === memoryId);
+           if (memoryIndex !== -1) {
+               memories.splice(memoryIndex, 1);
+               const capsuleIndex = capsules.findIndex(c => c.memory.id === memoryId);
+               if (capsuleIndex !== -1) {
+                   scene.remove(capsules[capsuleIndex].mesh);
+                   capsules.splice(capsuleIndex, 1);
+               }
+               saveToLocalStorage();
+           }
+       }
+
+       function fadeMemoriesOverTime() {
+           const now = new Date();
+           capsules.forEach(capsule => {
+               const memory = capsule.memory;
+               const ageInDays = (now - new Date(memory.dateAdded)) / (1000 * 60 * 60 * 24);
+               let opacity = 1.0 - (ageInDays / 365);
+               opacity = Math.max(0.3, opacity);
+               capsule.mesh.material.opacity = opacity;
+           });
+       }
+
+       function recoverFadedMemories() {
+           capsules.forEach(capsule => {
+               new TWEEN.Tween(capsule.mesh.material)
+                   .to({ opacity: 0.8 }, 2000)
+                   .easing(TWEEN.Easing.Cubic.Out)
+                   .start();
+               capsule.memory.dateAdded = new Date();
+           });
+           saveToLocalStorage();
+       }
+
+       function saveToLocalStorage() {
+           localStorage.setItem('timeCapsulePeople', JSON.stringify(people));
+           localStorage.setItem('timeCapsuleMemories', JSON.stringify(memories));
+       }
+
+       function loadFromLocalStorage() {
+           const savedPeople = localStorage.getItem('timeCapsulePeople');
+           const savedMemories = localStorage.getItem('timeCapsuleMemories');
+           if (savedPeople) {
+               people = JSON.parse(savedPeople);
+           }
+           if (savedMemories) {
+               memories = JSON.parse(savedMemories);
+               memories.forEach(memory => {
+                   createMemoryCapsule(memory);
+               });
+           }
+       }
+
+       function exportMemories() {
+           const data = { people: people, memories: memories };
+           const dataStr = JSON.stringify(data);
+           const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+           const exportName = `TimeCapsule_Export_${new Date().toISOString().slice(0,10)}.json`;
+           const linkElement = document.createElement('a');
+           linkElement.setAttribute('href', dataUri);
+           linkElement.setAttribute('download', exportName);
+           linkElement.click();
+       }
+
+       function importMemories(jsonData) {
+           try {
+               const data = JSON.parse(jsonData);
+               if (data.people && data.memories) {
+                   if (confirm(`Import ${data.memories.length} memories and ${data.people.length} people? This will replace any existing data.`)) {
+                       people = [];
+                       memories = [];
+                       capsules.forEach(capsule => {
+                           scene.remove(capsule.mesh);
+                       });
+                       capsules = [];
+                       people = data.people;
+                       memories = data.memories;
+                       memories.forEach(memory => {
+                           createMemoryCapsule(memory);
+                       });
+                       updatePeopleList();
+                       updateMemoryPersonDropdown();
+                       saveToLocalStorage();
+                       alert('Import completed successfully!');
+                   }
+               } else {
+                   alert('Invalid data format. Import failed.');
+               }
+           } catch (error) {
+               alert('Error importing data: ' + error.message);
+           }
+       }
+
+       // Memory sharing function
+       function shareMemory() {
+           if (!currentDisplayedMemory) return;
+           const memory = currentDisplayedMemory;
+           const shareData = {
+               title: memory.title,
+               text: memory.text
+           };
+           if (navigator.share) {
+               navigator.share(shareData)
+                   .then(() => console.log('Memory shared successfully'))
+                   .catch(error => console.error('Error sharing memory:', error));
+           } else if (navigator.clipboard) {
+               const shareText = `${memory.title}\n\n${memory.text}`;
+               navigator.clipboard.writeText(shareText)
+                   .then(() => alert('Memory copied to clipboard'))
+                   .catch(err => alert('Failed to copy memory to clipboard'));
+           } else {
+               alert('Sharing not supported on this browser.');
+           }
+       }
+
+       function animate() {
+           requestAnimationFrame(animate);
+           TWEEN.update();
+           capsules.forEach(capsule => {
+               capsule.mesh.rotation.x += 0.002;
+               capsule.mesh.rotation.y += 0.003;
+           });
+           if (!window.lastFadeCheck || (new Date() - window.lastFadeCheck) > 60000) {
+               fadeMemoriesOverTime();
+               window.lastFadeCheck = new Date();
+           }
+           renderer.render(scene, camera);
+       }
+   </script>
+</body>
+</html>
+
+
+
